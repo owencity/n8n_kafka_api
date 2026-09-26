@@ -25,7 +25,9 @@ class GithubPrEventContractTest {
             "synchronize",
             "owencity/n8n_kafka",
             4,
-            "6dcb09b5b57875f334f61aebed695e2e4193db5e"
+            "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+            "feat/webhook-kafka-pipeline",
+            "main"
     );
 
     @Test
@@ -40,7 +42,7 @@ class GithubPrEventContractTest {
         JsonNode actual = mapper.valueToTree(sample);
 
         assertThat(actual.propertyNames())
-                .containsExactly("deliveryId", "event", "action", "repo", "prNumber", "headSha");
+                .containsExactly("deliveryId", "event", "action", "repo", "prNumber", "headSha", "headRef", "baseRef");
     }
 
     @Test
@@ -65,11 +67,13 @@ class GithubPrEventContractTest {
     @Test
     void rejectsMissingOrInvalidFields() {
         for (Runnable invalid : List.<Runnable>of(
-                () -> new GithubPrEvent(null, "pull_request", "opened", "o/r", 1, "sha"),
-                () -> new GithubPrEvent("id", " ", "opened", "o/r", 1, "sha"),
-                () -> new GithubPrEvent("id", "pull_request", "opened", "", 1, "sha"),
-                () -> new GithubPrEvent("id", "pull_request", "opened", "o/r", 0, "sha"),
-                () -> new GithubPrEvent("id", "pull_request", "opened", "o/r", 1, null)
+                () -> new GithubPrEvent(null, "pull_request", "opened", "o/r", 1, "sha", "feat", "main"),
+                () -> new GithubPrEvent("id", " ", "opened", "o/r", 1, "sha", "feat", "main"),
+                () -> new GithubPrEvent("id", "pull_request", "opened", "", 1, "sha", "feat", "main"),
+                () -> new GithubPrEvent("id", "pull_request", "opened", "o/r", 0, "sha", "feat", "main"),
+                () -> new GithubPrEvent("id", "pull_request", "opened", "o/r", 1, null, "feat", "main"),
+                () -> new GithubPrEvent("id", "pull_request", "opened", "o/r", 1, "sha", "", "main"),
+                () -> new GithubPrEvent("id", "pull_request", "opened", "o/r", 1, "sha", "feat", null)
         )) {
             assertThatThrownBy(invalid::run).isInstanceOf(RuntimeException.class);
         }

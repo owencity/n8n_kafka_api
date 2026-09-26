@@ -47,7 +47,9 @@ class GithubPrEventPublisherKafkaTest {
                 "synchronize",
                 "owencity/n8n_kafka",
                 4,
-                "6dcb09b5b57875f334f61aebed695e2e4193db5e"
+                "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+                "feat/webhook-kafka-pipeline",
+                "main"
         );
 
         publisher.publish(event);

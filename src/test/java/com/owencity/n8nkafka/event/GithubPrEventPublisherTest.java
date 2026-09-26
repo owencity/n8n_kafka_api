@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class GithubPrEventPublisherTest {
 
     private static final GithubPrEvent EVENT = new GithubPrEvent(
-            "delivery-1", "pull_request", "opened", "owencity/n8n_kafka", 4, "abc123");
+            "delivery-1", "pull_request", "opened", "owencity/n8n_kafka", 4, "abc123", "feat/x", "main");
 
     @SuppressWarnings("unchecked")
     private final KafkaTemplate<String, String> kafkaTemplate = mock(KafkaTemplate.class);

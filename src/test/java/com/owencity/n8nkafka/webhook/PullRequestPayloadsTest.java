@@ -38,6 +38,16 @@ class PullRequestPayloadsTest {
     }
 
     @Test
+    void rejectsPayloadWithoutBaseRef() throws IOException {
+        ObjectNode payload = (ObjectNode) read("/webhook/pull_request.synchronize.json");
+        ((ObjectNode) payload.get("pull_request").get("base")).remove("ref");
+
+        assertThatThrownBy(() -> PullRequestPayloads.toEvent(DELIVERY_ID, payload))
+                .isInstanceOf(InvalidWebhookPayloadException.class)
+                .hasMessageContaining("baseRef");
+    }
+
+    @Test
     void rejectsPayloadWithoutRepository() throws IOException {
         ObjectNode payload = (ObjectNode) read("/webhook/pull_request.synchronize.json");
         payload.remove("repository");

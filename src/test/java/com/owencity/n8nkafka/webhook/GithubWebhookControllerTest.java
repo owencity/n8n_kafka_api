@@ -55,7 +55,7 @@ class GithubWebhookControllerTest {
         assertThat(post("pull_request", DELIVERY_ID, body, sign(body))).hasStatus(202);
         verify(publisher).publish(new GithubPrEvent(
                 DELIVERY_ID, "pull_request", action, "owencity/n8n_kafka", 4,
-                "6dcb09b5b57875f334f61aebed695e2e4193db5e"));
+                "6dcb09b5b57875f334f61aebed695e2e4193db5e", "feat/webhook-kafka-pipeline", "main"));
     }
 
     @Test
