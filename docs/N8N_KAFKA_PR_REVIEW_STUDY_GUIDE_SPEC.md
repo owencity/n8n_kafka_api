@@ -927,7 +927,8 @@ n8n이 한계에 부딪히는 경우(실패한 실행의 offset이 commit되어 
 
 Phase 2~3 결정 사항:
 
-- Producer: `acks=all`, `enable.idempotence=true`, 전송 타임아웃은 GitHub webhook 타임아웃(10초)보다 짧게
+- Producer: `acks=all`, `enable.idempotence=true`, `max.block.ms=3000`, `delivery.timeout.ms=5000`, ACK 대기 `send-timeout=6s` (GitHub webhook 타임아웃 10초 이내)
+- value는 `StringSerializer` + 직접 JSON 직렬화 (`__TypeId__` 헤더 없음)
 - 응답 코드: 대상 PR 이벤트 202, `ping` 200, 대상 외 event/action 204, 서명 오류 401, 잘못된 payload 400, Kafka publish 실패 5xx
 - GitHub webhook Content type은 `application/json` (서명은 body 원문 바이트 기준)
 - Kafka 실패로 5xx를 반환해도 GitHub는 자동 재전송하지 않는다. 이 빈틈은 16장 Reconciliation이 메운다.

@@ -21,7 +21,7 @@ GitHub PR Webhook을 수신해 Kafka(`github.pr.events`)에 저장하는 Spring 
 ├── src/main/java/com/owencity/n8nkafka/
 │   ├── N8nKafkaApiApplication.java
 │   ├── webhook/                  # Webhook 수신, 서명 검증, payload → 계약 변환
-│   └── event/                    # GithubPrEvent(produce 계약), (Phase 3) Kafka producer
+│   └── event/                    # GithubPrEvent(produce 계약), Kafka publisher
 ├── src/main/resources/application.yml
 ├── scripts/
 │   ├── kafka-smoke-test.sh       # Kafka produce/consume, offset 재개 확인
@@ -39,7 +39,8 @@ GitHub PR Webhook을 수신해 Kafka(`github.pr.events`)에 저장하는 Spring 
 cp .env.example .env                # GITHUB_WEBHOOK_SECRET 채우기 (openssl rand -hex 32)
 docker compose up -d --build        # kafka → kafka-init(topic 생성) → app 순서로 기동
 bash scripts/kafka-smoke-test.sh    # Kafka 동작 확인 (PASS 출력)
-bash scripts/send-test-webhook.sh opened   # HTTP 202
+bash scripts/send-test-webhook.sh opened   # HTTP 202 → github.pr.events에 저장
+docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap-server kafka:19092 --topic github.pr.events --from-beginning   --formatter-property print.key=true --timeout-ms 5000
 curl localhost:8080/actuator/health
 docker compose down                 # 종료 (데이터 유지). 데이터까지 지우려면 -v
 ```
@@ -67,11 +68,12 @@ topic 자동 생성은 꺼져 있다. 오타난 topic 이름으로 접근하면 
 
 | 응답 | 조건 |
 |---|---|
-| 202 | `pull_request`의 `opened` / `synchronize` / `reopened` |
+| 202 | `pull_request`의 `opened` / `synchronize` / `reopened`를 Kafka에 저장 완료 (broker ACK 확인 후) |
 | 200 | `ping` |
 | 204 | 그 외 event/action (무시) |
 | 401 | `X-Hub-Signature-256` 누락/불일치 |
 | 400 | 서명은 유효하지만 JSON이 깨졌거나 계약 필드를 얻을 수 없음 |
+| 503 | Kafka 저장 실패 (약 4~9초 내 응답). GitHub는 자동 재전송하지 않으므로 webhook 설정의 Recent Deliveries에서 Redeliver |
 
 ## 환경변수
 
