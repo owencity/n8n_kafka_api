@@ -115,6 +115,7 @@ feature 브랜치 배포: Actions → CI/CD → Run workflow → 브랜치 선�
 | `pr/01-kafka-foundation` | 메시지 계약, Kafka 인프라, CI | kafka-contract, kafka-infra, ci-cd |
 | `pr/02-webhook-receiver` | Webhook 서명 검증, 수신 엔드포인트 | webhook-security, webhook-receiver |
 | `pr/03-kafka-producer` | Webhook → Kafka publish | kafka-producer |
+| `pr/04-deploy` | OCI 배포 (feature 브랜치 수동 배포, health 확인) | deploy |
 
 규칙:
 
