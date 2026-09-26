@@ -108,21 +108,31 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # secret 값을 붙여넣을 때 섞인 앞뒤 공백/줄바꿈을 제거한다.
       - name: Prepare SSH
         env:
           SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.OCI_KNOWN_HOSTS }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
         run: |
+          user=$(printf '%s' "$OCI_USER" | tr -d '[:space:]')
+          host=$(printf '%s' "$OCI_HOST" | tr -d '[:space:]')
+          path=$(printf '%s' "$DEPLOY_PATH" | tr -d '[:space:]')
+          for name in user host path; do
+            [ -n "${!name}" ] || { echo "OCI_USER / OCI_HOST / DEPLOY_PATH 중 비어 있는 값이 있다 ($name)" >&2; exit 1; }
+          done
+          echo "TARGET=$user@$host" >> "$GITHUB_ENV"
+          echo "DEPLOY_PATH=$path" >> "$GITHUB_ENV"
+
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
 
       # 서버의 compose.yaml을 레포와 같게 맞춘다. .env(secret)는 서버에만 있고 덮어쓰지 않는다.
       - name: Deploy to OCI
-        env:
-          TARGET: ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
         run: |
           APP_TAG="sha-${GITHUB_SHA::7}"
           echo "배포 이미지: $IMAGE:$APP_TAG"
@@ -139,8 +149,6 @@ jobs:
           "
 
       - name: Check health
-        env:
-          TARGET: ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }}
         run: |
           for i in $(seq 1 30); do
             if ssh -i ~/.ssh/id_deploy "$TARGET" "curl -sf localhost:8080/actuator/health"; then
@@ -149,5 +157,5 @@ jobs:
             sleep 3
           done
           echo "app이 90초 안에 healthy 상태가 되지 않았다" >&2
-          ssh -i ~/.ssh/id_deploy "$TARGET" "cd '${{ vars.DEPLOY_PATH }}' && docker compose logs --tail 50 app" || true
+          ssh -i ~/.ssh/id_deploy "$TARGET" "cd '$DEPLOY_PATH' && docker compose logs --tail 50 app" || true
           exit 1
