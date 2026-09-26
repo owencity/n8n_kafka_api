@@ -69,3 +69,4 @@ OCI 서버 준비:
 
 <!-- n8n Kafka Trigger E2E test: close this PR without merging -->
 <!-- offset retry test -->
+<!-- offset retry test 2 (published) -->
