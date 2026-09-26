@@ -122,18 +122,36 @@ Kafka에는 전체 PR diff를 넣지 않는다.
 
 Kafka는 **이벤트 전달과 보존** 역할만 담당하며, 실제 최신 PR 정보는 n8n이 GitHub API를 통해 조회한다.
 
-예시:
+### Produce 계약 (고정)
+
+Spring Boot producer와 n8n consumer 사이의 메시지 계약이다. **반드시 아래 형태로 produce한다.**
 
 ```json
 {
   "deliveryId": "github-delivery-id",
   "event": "pull_request",
   "action": "synchronize",
-  "repository": "owencity/n8n_kafka",
-  "prNumber": 1,
+  "repo": "owencity/n8n_kafka",
+  "prNumber": 4,
   "headSha": "abc123..."
 }
 ```
+
+| 필드 | 타입 | 출처 |
+|---|---|---|
+| `deliveryId` | string | `X-GitHub-Delivery` 헤더 |
+| `event` | string | `X-GitHub-Event` 헤더 |
+| `action` | string | payload `action` |
+| `repo` | string | payload `repository.full_name` |
+| `prNumber` | number (정수) | payload `pull_request.number` |
+| `headSha` | string | payload `pull_request.head.sha` |
+
+규칙:
+
+- 6개 필드 모두 필수이며 null/빈 문자열을 허용하지 않는다.
+- 필드를 추가/삭제/이름 변경하지 않는다. 변경이 필요하면 n8n consumer와 먼저 합의한다.
+- value는 순수 JSON만 담는다. Java 타입 정보 헤더(`__TypeId__`)에 consumer가 의존하지 않도록 한다.
+- 구현: `GithubPrEvent` record, 계약 테스트 `GithubPrEventContractTest`, fixture `src/test/resources/contract/github-pr-event.json`
 
 권장 Topic:
 
@@ -144,13 +162,13 @@ github.pr.events
 권장 Key:
 
 ```text
-{repository}:{prNumber}
+{repo}:{prNumber}
 ```
 
 예:
 
 ```text
-owencity/n8n_kafka:1
+owencity/n8n_kafka:4
 ```
 
 같은 PR 이벤트가 가능한 한 동일 partition에서 순서를 유지하도록 하기 위함이다.
@@ -603,7 +621,7 @@ PoC 1차 범위에서는 Kafka 기반 delivery를 먼저 완성한다.
 최소 식별 기준:
 
 ```text
-repository
+repo
 prNumber
 headSha
 ```
@@ -716,8 +734,8 @@ GitHub test delivery 또는 테스트 payload를 안전하게 수신한다.
 
 - GithubPrEvent 정의
 - Kafka producer 구현
-- repository/prNumber/headSha/action/deliveryId publish
-- Kafka key `{repository}:{prNumber}` 사용
+- 4장 Produce 계약(`deliveryId/event/action/repo/prNumber/headSha`) 형태로 publish
+- Kafka key `{repo}:{prNumber}` 사용
 - broker ACK 확인 후 HTTP 성공 응답
 
 완료 조건:
