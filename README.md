@@ -68,3 +68,4 @@ OCI 서버 준비:
 3. `DEPLOY_PATH`에 `compose.yaml`과 `.env` 배치 (`app` 서비스 이미지: `ghcr.io/owencity/n8n_kafka_api:latest`)
 
 <!-- n8n Kafka Trigger E2E test: close this PR without merging -->
+<!-- offset retry test -->
