@@ -1,5 +1,8 @@
 package com.owencity.n8nkafka.webhook;
 
+import com.owencity.n8nkafka.event.EventPublishException;
+import com.owencity.n8nkafka.event.GithubPrEvent;
+import com.owencity.n8nkafka.event.GithubPrEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -9,6 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
@@ -21,6 +25,11 @@ import java.security.GeneralSecurityException;
 import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @WebMvcTest(GithubWebhookController.class)
 @Import(GithubSignatureVerifier.class)
@@ -35,12 +44,26 @@ class GithubWebhookControllerTest {
     @Autowired
     private MockMvcTester mvc;
 
+    @MockitoBean
+    private GithubPrEventPublisher publisher;
+
     @ParameterizedTest
     @ValueSource(strings = {"opened", "synchronize", "reopened"})
     void acceptsTargetPullRequestActions(String action) throws IOException {
         String body = pullRequestPayload(action);
 
         assertThat(post("pull_request", DELIVERY_ID, body, sign(body))).hasStatus(202);
+        verify(publisher).publish(new GithubPrEvent(
+                DELIVERY_ID, "pull_request", action, "owencity/n8n_kafka", 4,
+                "6dcb09b5b57875f334f61aebed695e2e4193db5e"));
+    }
+
+    @Test
+    void returns503WhenKafkaPublishFails() throws IOException {
+        doThrow(new EventPublishException("broker unavailable", null)).when(publisher).publish(any());
+        String body = pullRequestPayload("opened");
+
+        assertThat(post("pull_request", DELIVERY_ID, body, sign(body))).hasStatus(503);
     }
 
     @ParameterizedTest
@@ -49,6 +72,7 @@ class GithubWebhookControllerTest {
         String body = pullRequestPayload(action);
 
         assertThat(post("pull_request", DELIVERY_ID, body, sign(body))).hasStatus(204);
+        verifyNoInteractions(publisher);
     }
 
     @Test
@@ -56,6 +80,7 @@ class GithubWebhookControllerTest {
         String body = "{\"ref\":\"refs/heads/main\"}";
 
         assertThat(post("push", DELIVERY_ID, body, sign(body))).hasStatus(204);
+        verifyNoInteractions(publisher);
     }
 
     @Test
@@ -71,6 +96,7 @@ class GithubWebhookControllerTest {
         String signedWithOtherSecret = sign(body, "wrong-secret");
 
         assertThat(post("pull_request", DELIVERY_ID, body, signedWithOtherSecret)).hasStatus(401);
+        verify(publisher, never()).publish(any());
     }
 
     @Test
@@ -99,6 +125,7 @@ class GithubWebhookControllerTest {
                 .replace("\"sha\": \"6dcb09b5b57875f334f61aebed695e2e4193db5e\"", "\"sha\": \"\"");
 
         assertThat(post("pull_request", DELIVERY_ID, body, sign(body))).hasStatus(400);
+        verifyNoInteractions(publisher);
     }
 
     @Test
