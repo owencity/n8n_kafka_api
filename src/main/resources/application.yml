@@ -3,11 +3,29 @@ spring:
     name: n8n-kafka-api
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      # 모든 in-sync replica가 저장해야 ACK. (single broker에서는 leader 1개지만 운영 기본값으로 명시)
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # GithubPrEventPublisher가 직접 JSON 문자열로 직렬화한다 (__TypeId__ 헤더 없음)
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        # 재시도로 인한 중복 저장 방지
+        enable.idempotence: true
+        # GitHub webhook 타임아웃(10초) 안에 성공/실패가 결정되도록 한다.
+        # max.block.ms(3s) + delivery.timeout.ms(5s) = 최대 8초
+        max.block.ms: 3000
+        request.timeout.ms: 3000
+        delivery.timeout.ms: 5000
 
 github:
   webhook:
     # 비어 있으면 기동 실패 (GithubWebhookProperties @NotBlank)
     secret: ${GITHUB_WEBHOOK_SECRET:}
+  pr-events:
+    topic: github.pr.events
+    # delivery.timeout.ms보다 약간 길게 둔다. 정상이라면 producer가 먼저 성공/실패를 알린다.
+    send-timeout: 6s
 
 management:
   endpoints:
