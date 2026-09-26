@@ -133,7 +133,9 @@ Spring Boot producer와 n8n consumer 사이의 메시지 계약이다. **반드�
   "action": "synchronize",
   "repo": "owencity/n8n_kafka",
   "prNumber": 4,
-  "headSha": "abc123..."
+  "headSha": "abc123...",
+  "headRef": "feature/xxx",
+  "baseRef": "main"
 }
 ```
 
@@ -145,10 +147,13 @@ Spring Boot producer와 n8n consumer 사이의 메시지 계약이다. **반드�
 | `repo` | string | payload `repository.full_name` |
 | `prNumber` | number (정수) | payload `pull_request.number` |
 | `headSha` | string | payload `pull_request.head.sha` |
+| `headRef` | string | payload `pull_request.head.ref` |
+| `baseRef` | string | payload `pull_request.base.ref` |
 
 규칙:
 
-- 6개 필드 모두 필수이며 null/빈 문자열을 허용하지 않는다.
+- 8개 필드 모두 필수이며 null/빈 문자열을 허용하지 않는다.
+- `headRef`/`baseRef`는 n8n 리뷰 프롬프트용으로 추가했다(필드 추가만 했으므로 하위 호환). 이벤트 발생 시점 값이며, base 변경(`edited`)은 처리하지 않으므로 다음 `synchronize`에서 갱신된다.
 - 필드를 추가/삭제/이름 변경하지 않는다. 변경이 필요하면 n8n consumer와 먼저 합의한다.
 - value는 순수 JSON만 담는다. Java 타입 정보 헤더(`__TypeId__`)에 consumer가 의존하지 않도록 한다.
 - 구현: `GithubPrEvent` record, 계약 테스트 `GithubPrEventContractTest`, fixture `src/test/resources/contract/github-pr-event.json`
