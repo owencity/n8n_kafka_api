@@ -26,7 +26,9 @@ final class PullRequestPayloads {
                     action(payload),
                     payload.path("repository").path("full_name").asString(),
                     pullRequest.path("number").asInt(),
-                    pullRequest.path("head").path("sha").asString()
+                    pullRequest.path("head").path("sha").asString(),
+                    pullRequest.path("head").path("ref").asString(),
+                    pullRequest.path("base").path("ref").asString()
             );
         } catch (IllegalArgumentException e) {
             throw new InvalidWebhookPayloadException("pull_request payload에 필수 값이 없다: " + e.getMessage(), e);
