@@ -66,3 +66,5 @@ OCI 서버 준비:
 1. Docker, Docker Compose 설치
 2. GHCR 패키지는 기본 private이므로 `read:packages` 권한 토큰으로 `docker login ghcr.io` 1회 실행
 3. `DEPLOY_PATH`에 `compose.yaml`과 `.env` 배치 (`app` 서비스 이미지: `ghcr.io/owencity/n8n_kafka_api:latest`)
+
+<!-- n8n review flow test: close this PR without merging -->
