@@ -1,0 +1,39 @@
+{
+  "action": "synchronize",
+  "number": 4,
+  "before": "a10867b14bb761a232cd80139fbd4c0d33264240",
+  "after": "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+  "pull_request": {
+    "url": "https://api.github.com/repos/owencity/n8n_kafka/pulls/4",
+    "id": 2849302817,
+    "number": 4,
+    "state": "open",
+    "draft": false,
+    "title": "GitHub webhook을 Kafka로 전달",
+    "user": {
+      "login": "owencity"
+    },
+    "head": {
+      "label": "owencity:feat/webhook-kafka-pipeline",
+      "ref": "feat/webhook-kafka-pipeline",
+      "sha": "6dcb09b5b57875f334f61aebed695e2e4193db5e"
+    },
+    "base": {
+      "label": "owencity:main",
+      "ref": "main",
+      "sha": "b131875e0d5b1b7a7c4b5b0c2d1f0e9a8b7c6d5e"
+    }
+  },
+  "repository": {
+    "id": 1051234567,
+    "name": "n8n_kafka",
+    "full_name": "owencity/n8n_kafka",
+    "private": false,
+    "owner": {
+      "login": "owencity"
+    }
+  },
+  "sender": {
+    "login": "owencity"
+  }
+}
