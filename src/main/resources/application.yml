@@ -4,6 +4,11 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
+github:
+  webhook:
+    # 비어 있으면 기동 실패 (GithubWebhookProperties @NotBlank)
+    secret: ${GITHUB_WEBHOOK_SECRET:}
+
 management:
   endpoints:
     web:
