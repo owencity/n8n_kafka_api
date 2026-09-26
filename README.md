@@ -103,8 +103,26 @@ Compose (`.env.example` 참고):
 
 ### 브랜치 / PR 운영
 
-기능 전체를 하나의 브랜치에서 개발하고, 완성된 뒤 PR을 한 번 만든다. 그 PR이 n8n 리뷰와 Study Guide의 대상이 된다.
-커밋에는 Study Unit 태그를 붙인다: `[study:<unit>] <type>: <내용>` (명세 7장)
+개발은 `feat/webhook-kafka-pipeline` 하나에서 진행하고, 파이프라인이 동작한 뒤 **기능 단위 PR로 나눠 순서대로** 리뷰받는다.
+각 PR이 n8n 리뷰와 Study Guide의 대상이 된다.
+
+| PR 브랜치 | 기능 | Study Unit |
+|---|---|---|
+| `pr/01-kafka-foundation` | 메시지 계약, Kafka 인프라, CI | kafka-contract, kafka-infra, ci-cd |
+| `pr/02-webhook-receiver` | Webhook 서명 검증, 수신 엔드포인트 | webhook-security, webhook-receiver |
+| `pr/03-kafka-producer` | Webhook → Kafka publish | kafka-producer |
+
+규칙:
+
+- 커밋에는 Study Unit 태그를 붙인다: `[study:<unit>] <type>: <내용>` (명세 7장). 구현과 테스트는 나눠 커밋한다.
+- 한 기능의 커밋은 연속되게 쌓는다. 다른 기능 커밋과 섞지 않는다.
+- 기능이 끝나면 마지막 커밋에 `pr/NN-*` 브랜치를 걸고 push한다. CI가 그 조각 단독으로 빌드/테스트되는지 확인한다.
+- 이미 경계를 잡은 기능을 고쳐야 하면 `git commit --fixup <커밋>` 후 `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash main`으로 해당 조각에 합치고, `pr/*` 브랜치를 옮긴다.
+
+리뷰 순서:
+
+1. `pr/01` → `main` PR 생성 → 리뷰 확인 → **merge commit**으로 merge (squash/rebase merge는 커밋 SHA가 바뀌어 다음 PR과 충돌한다)
+2. `pr/02` → `main` PR 생성 (이제 `pr/02`의 커밋만 보인다) → 반복
 
 ### 배포 활성화
 

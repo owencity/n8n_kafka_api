@@ -893,6 +893,13 @@ GitHub + Slack
 
 > **핵심 원칙: PR은 완성된 기능 단위로 유지하고, commit을 Study Unit으로 그룹화하여 하나의 Gemini 호출 안에서 전체 코드리뷰와 세분화된 학습 가이드를 생성한다.**
 
+### 이 레포 자체의 적용 방식
+
+이 파이프라인을 만드는 과정도 같은 루프로 리뷰받는다.
+파이프라인이 동작하기 전에는 리뷰할 수 없으므로, 개발 브랜치 하나에서 완성까지 커밋을 쌓고
+완성 후 기능 단위 PR(`pr/01-kafka-foundation`, `pr/02-webhook-receiver`, `pr/03-kafka-producer` ...)로 나눠 순서대로 연다.
+PR 하나 = Gemini 호출 1회 = 그 기능의 Study Unit별 리뷰/학습 가이드. 운영 규칙은 README "브랜치 / PR 운영".
+
 ---
 
 ## 24. 기술 스택 및 레포 구조 (Spring Webhook Receiver)

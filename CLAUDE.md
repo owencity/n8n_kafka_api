@@ -6,5 +6,6 @@
 - 이 레포는 Webhook 수신 → 검증 → Kafka publish까지만 담당한다. AI 호출, GitHub API 조회는 n8n 몫이다.
 - 빌드/테스트: `./gradlew build`
 - 패키지: `com.owencity.n8nkafka` 아래 기능 단위(`webhook`, `event`). 필요할 때 만든다.
-- 브랜치 하나에서 개발하고 PR은 기능 완성 후 한 번 만든다. 커밋에는 `[study:<unit>]` 태그를 붙이고, 구현과 테스트를 나눠 커밋한다.
+- 개발은 `feat/webhook-kafka-pipeline` 하나에서 한다. 파이프라인 완성 후 기능 단위 PR(`pr/NN-*`)로 나눠 순서대로 리뷰받는다. 규칙은 README의 "브랜치 / PR 운영".
+- 커밋에는 `[study:<unit>]` 태그를 붙이고, 구현과 테스트를 나눠 커밋한다. 한 기능의 커밋은 연속되게 쌓는다.
 - secret은 환경변수로만 받고 로그에 출력하지 않는다.
