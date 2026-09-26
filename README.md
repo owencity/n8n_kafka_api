@@ -81,9 +81,14 @@ Compose (`.env.example` 참고):
 
 | Job | 실행 조건 | 내용 |
 |---|---|---|
-| `build` | 모든 PR, main push | `./gradlew build`, Docker 이미지 빌드 검증 |
+| `build` | 모든 브랜치 push | `./gradlew build`, Docker 이미지 빌드 검증 |
 | `publish` | main push | `ghcr.io/owencity/n8n_kafka_api:{latest, sha-xxxx}` push (amd64/arm64) |
 | `deploy` | main push + `DEPLOY_ENABLED=true` | OCI에 SSH 접속 후 `docker compose pull app && up -d app` |
+
+### 브랜치 / PR 운영
+
+기능 전체를 하나의 브랜치에서 개발하고, 완성된 뒤 PR을 한 번 만든다. 그 PR이 n8n 리뷰와 Study Guide의 대상이 된다.
+커밋에는 Study Unit 태그를 붙인다: `[study:<unit>] <type>: <내용>` (명세 7장)
 
 ### 배포 활성화
 
