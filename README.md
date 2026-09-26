@@ -100,8 +100,10 @@ Compose (`.env.example` 참고):
 | Job | 실행 조건 | 내용 |
 |---|---|---|
 | `build` | 모든 브랜치 push | `./gradlew build`, Docker 이미지 빌드 검증 |
-| `publish` | main push | `ghcr.io/owencity/n8n_kafka_api:{latest, sha-xxxx}` push (amd64/arm64) |
-| `deploy` | main push + `DEPLOY_ENABLED=true` | OCI에 SSH 접속 후 `docker compose pull app && up -d app` |
+| `publish` | main push, 수동 실행 | `ghcr.io/owencity/n8n_kafka_api:sha-xxxxxxx` push (amd64/arm64). `latest`는 main만 |
+| `deploy` | (main push 또는 수동 실행) + `DEPLOY_ENABLED=true` | `compose.yaml` 복사 → `APP_TAG=sha-xxxxxxx`로 pull/up → health 확인 |
+
+feature 브랜치 배포: Actions → CI/CD → Run workflow → 브랜치 선택 → `OCI에 배포` 체크
 
 ### 브랜치 / PR 운영
 
@@ -130,11 +132,18 @@ Compose (`.env.example` 참고):
 
 GitHub 저장소 Settings에서 설정한다.
 
-- Variables: `DEPLOY_ENABLED=true`, `DEPLOY_PATH` (서버의 compose.yaml 위치)
-- Secrets: `OCI_HOST`, `OCI_USER`, `OCI_SSH_KEY` (배포 전용 private key), `OCI_KNOWN_HOSTS` (`ssh-keyscan <host>` 결과)
+| 종류 | 이름 | 값 |
+|---|---|---|
+| Variable | `DEPLOY_ENABLED` | `true` |
+| Variable | `DEPLOY_PATH` | 서버 배포 디렉터리 (예: `/home/ubuntu/n8n-kafka`) |
+| Secret | `OCI_HOST` | OCI 공인 IP (SSH 22) |
+| Secret | `OCI_USER` | `ubuntu` |
+| Secret | `OCI_SSH_KEY` | 배포 전용 private key 전체 |
+| Secret | `OCI_KNOWN_HOSTS` | `ssh-keyscan <OCI_HOST>` 결과 |
 
-OCI 서버 준비:
+OCI 서버 준비 (1회):
 
-1. Docker, Docker Compose 설치
-2. GHCR 패키지는 기본 private이므로 `read:packages` 권한 토큰으로 `docker login ghcr.io` 1회 실행
-3. `DEPLOY_PATH`에 `compose.yaml`과 `.env` 배치 (`app` 서비스 이미지: `ghcr.io/owencity/n8n_kafka_api:latest`)
+1. 배포 전용 public key를 `~/.ssh/authorized_keys`에 추가
+2. `DEPLOY_PATH` 디렉터리 생성 후 `.env` 작성 (`.env.example` 참고. `KAFKA_EXTERNAL_HOST`/`KAFKA_EXTERNAL_BIND`는 Tailscale IP)
+3. GHCR 패키지가 private이면 `read:packages` 권한 토큰으로 `docker login ghcr.io` 1회 실행
+4. `compose.yaml`은 배포 때마다 레포에서 복사되므로 직접 관리하지 않는다

@@ -1,11 +1,21 @@
 name: CI/CD
 
-# PR은 기능이 완성된 뒤에 한 번 만들고, 개발 중에는 브랜치에 push만 한다.
+# PR은 기능이 완성된 뒤에 만들고, 개발 중에는 브랜치에 push만 한다.
 # 그래서 PR 이벤트가 아니라 모든 브랜치의 push에서 build를 실행한다.
+#
+# 배포:
+#   - main push: latest, sha-xxxxxxx 이미지 publish 후 자동 배포
+#   - 수동 실행(Actions > CI/CD > Run workflow): 선택한 브랜치를 sha-xxxxxxx로 publish 후 배포
+#     (리뷰 PR을 만들기 전에 feature 브랜치를 OCI에서 검증하기 위함)
 on:
   push:
     branches: ['**']
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'OCI에 배포'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -45,7 +55,7 @@ jobs:
 
   publish:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -63,13 +73,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # latest는 main에서만 갱신한다. feature 브랜치는 sha 태그로만 올라간다.
       - id: meta
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |
             type=sha
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       # OCI Ampere(arm64)와 x86 인스턴스를 모두 지원한다.
       - uses: docker/build-push-action@v7
@@ -85,21 +96,58 @@ jobs:
   # 저장소 변수 DEPLOY_ENABLED=true 로 켜기 전까지는 건너뛴다. 설정 방법은 README 참고.
   deploy:
     needs: publish
-    if: vars.DEPLOY_ENABLED == 'true'
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      (github.ref == 'refs/heads/main' || inputs.deploy)
     runs-on: ubuntu-latest
     environment: production
+    # 배포끼리는 겹치지 않게 순서대로 실행한다.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
-      - name: Deploy to OCI over SSH
+      - uses: actions/checkout@v7
+
+      - name: Prepare SSH
         env:
           SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.OCI_KNOWN_HOSTS }}
-          DEPLOY_HOST: ${{ secrets.OCI_HOST }}
-          DEPLOY_USER: ${{ secrets.OCI_USER }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
-          ssh -i ~/.ssh/id_deploy "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$DEPLOY_PATH' && docker compose pull app && docker compose up -d app"
+
+      # 서버의 compose.yaml을 레포와 같게 맞춘다. .env(secret)는 서버에만 있고 덮어쓰지 않는다.
+      - name: Deploy to OCI
+        env:
+          TARGET: ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+        run: |
+          APP_TAG="sha-${GITHUB_SHA::7}"
+          echo "배포 이미지: $IMAGE:$APP_TAG"
+          scp -i ~/.ssh/id_deploy compose.yaml "$TARGET:$DEPLOY_PATH/compose.yaml"
+          ssh -i ~/.ssh/id_deploy "$TARGET" "
+            set -e
+            cd '$DEPLOY_PATH'
+            test -f .env || { echo '.env가 없다. README의 OCI 서버 준비를 먼저 한다.' >&2; exit 1; }
+            export APP_TAG='$APP_TAG'
+            docker compose pull app
+            docker compose up -d --no-build
+            docker image prune -f > /dev/null
+            docker compose ps
+          "
+
+      - name: Check health
+        env:
+          TARGET: ${{ secrets.OCI_USER }}@${{ secrets.OCI_HOST }}
+        run: |
+          for i in $(seq 1 30); do
+            if ssh -i ~/.ssh/id_deploy "$TARGET" "curl -sf localhost:8080/actuator/health"; then
+              echo; echo "배포 완료"; exit 0
+            fi
+            sleep 3
+          done
+          echo "app이 90초 안에 healthy 상태가 되지 않았다" >&2
+          ssh -i ~/.ssh/id_deploy "$TARGET" "cd '${{ vars.DEPLOY_PATH }}' && docker compose logs --tail 50 app" || true
+          exit 1
