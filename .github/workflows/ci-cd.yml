@@ -131,6 +131,11 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
 
+          # 호스트 키 지문은 공개 정보다. "Host key verification failed" 시 서버 지문과 비교한다.
+          # 서버에서 확인: for f in /etc/ssh/ssh_host_*_key.pub; do ssh-keygen -lf $f; done
+          echo "OCI_KNOWN_HOSTS 지문:"
+          ssh-keygen -lf ~/.ssh/known_hosts || { echo "OCI_KNOWN_HOSTS 형식이 잘못됐다" >&2; exit 1; }
+
       # 서버의 compose.yaml을 레포와 같게 맞춘다. .env(secret)는 서버에만 있고 덮어쓰지 않는다.
       - name: Deploy to OCI
         run: |
