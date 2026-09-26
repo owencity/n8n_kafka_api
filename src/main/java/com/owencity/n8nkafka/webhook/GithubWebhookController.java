@@ -1,6 +1,8 @@
 package com.owencity.n8nkafka.webhook;
 
+import com.owencity.n8nkafka.event.EventPublishException;
 import com.owencity.n8nkafka.event.GithubPrEvent;
+import com.owencity.n8nkafka.event.GithubPrEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +26,8 @@ import java.util.Set;
  *   <li>200: {@code ping}</li>
  *   <li>204: 처리 대상이 아닌 event/action</li>
  *   <li>400: 서명은 유효하지만 payload/헤더가 잘못됨</li>
- *   <li>202: 처리 대상 PR 이벤트 수신</li>
+ *   <li>202: 처리 대상 PR 이벤트를 Kafka에 저장 완료 (broker ACK 확인 후)</li>
+ *   <li>503: Kafka 저장 실패. GitHub는 자동 재전송하지 않으므로 Recent Deliveries에서 재전송해야 한다.</li>
  * </ul>
  */
 @RestController
@@ -37,10 +40,16 @@ public class GithubWebhookController {
 
     private final GithubSignatureVerifier signatureVerifier;
     private final JsonMapper jsonMapper;
+    private final GithubPrEventPublisher publisher;
 
-    public GithubWebhookController(GithubSignatureVerifier signatureVerifier, JsonMapper jsonMapper) {
+    public GithubWebhookController(
+            GithubSignatureVerifier signatureVerifier,
+            JsonMapper jsonMapper,
+            GithubPrEventPublisher publisher
+    ) {
         this.signatureVerifier = signatureVerifier;
         this.jsonMapper = jsonMapper;
+        this.publisher = publisher;
     }
 
     // 서명은 body 원문 바이트로 계산해야 하므로 객체가 아닌 byte[]로 받는다.
@@ -78,7 +87,15 @@ public class GithubWebhookController {
         GithubPrEvent prEvent = PullRequestPayloads.toEvent(deliveryId, payload);
         log.info("PR 이벤트 수신: deliveryId={}, repo={}, prNumber={}, action={}, headSha={}",
                 prEvent.deliveryId(), prEvent.repo(), prEvent.prNumber(), prEvent.action(), prEvent.headSha());
+        // Kafka 저장이 확정되기 전에는 성공 응답을 보내지 않는다.
+        publisher.publish(prEvent);
         return ResponseEntity.accepted().build();
+    }
+
+    @ExceptionHandler(EventPublishException.class)
+    ResponseEntity<Void> handlePublishFailure(EventPublishException e) {
+        log.error("Kafka 저장 실패로 webhook 처리 실패: {}", e.getMessage(), e);
+        return ResponseEntity.status(503).build();
     }
 
     @ExceptionHandler({JacksonException.class, InvalidWebhookPayloadException.class})
