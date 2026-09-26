@@ -914,13 +914,13 @@ Kafka: apache/kafka 4.3.x (KRaft single broker)
 - 패키지: `com.owencity.n8nkafka` 아래 기능 단위
   - `webhook`: Webhook 수신, 서명 검증, payload 파싱 (Phase 2)
   - `event`: `GithubPrEvent`, Kafka producer (Phase 3)
-  - `config`: 설정 properties
 
 Spring AI는 도입하지 않는다. LLM 호출은 n8n이 담당하며, n8n과 AI API 사이에 Spring 계층을 추가하는 것은 이점 없이 홉만 늘린다.
 n8n이 한계에 부딪히는 경우(실패한 실행의 offset이 commit되어 메시지가 유실되거나, Code Node 로직을 테스트 없이 관리하기 어려워지는 경우)에만 consumer 자리를 Spring Kafka로 교체하는 것을 검토한다.
 
-Phase 2~3 구현 시 결정할 사항:
+Phase 2~3 결정 사항:
 
 - Producer: `acks=all`, `enable.idempotence=true`, 전송 타임아웃은 GitHub webhook 타임아웃(10초)보다 짧게
-- 응답 코드: 서명 오류 401, 대상 외 event/action 202, `ping` 2xx, Kafka publish 실패 5xx
+- 응답 코드: 대상 PR 이벤트 202, `ping` 200, 대상 외 event/action 204, 서명 오류 401, 잘못된 payload 400, Kafka publish 실패 5xx
+- GitHub webhook Content type은 `application/json` (서명은 body 원문 바이트 기준)
 - Kafka 실패로 5xx를 반환해도 GitHub는 자동 재전송하지 않는다. 이 빈틈은 16장 Reconciliation이 메운다.

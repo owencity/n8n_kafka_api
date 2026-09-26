@@ -66,6 +66,8 @@ services:
         condition: service_completed_successfully
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      # 비어 있으면 app이 기동되지 않는다 (.env에 설정)
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
     ports:
       - "${APP_BIND:-127.0.0.1}:8080:8080"
 

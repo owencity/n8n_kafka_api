@@ -20,11 +20,12 @@ GitHub PR Webhook을 수신해 Kafka(`github.pr.events`)에 저장하는 Spring 
 ├── docs/                         # 설계 명세
 ├── src/main/java/com/owencity/n8nkafka/
 │   ├── N8nKafkaApiApplication.java
-│   ├── webhook/                  # (Phase 2) Webhook 수신, 서명 검증, payload 파싱
-│   ├── event/                    # (Phase 3) GithubPrEvent, Kafka producer
-│   └── config/                   # 설정 properties
+│   ├── webhook/                  # Webhook 수신, 서명 검증, payload → 계약 변환
+│   └── event/                    # GithubPrEvent(produce 계약), (Phase 3) Kafka producer
 ├── src/main/resources/application.yml
-├── scripts/kafka-smoke-test.sh   # Kafka produce/consume, offset 재개 확인
+├── scripts/
+│   ├── kafka-smoke-test.sh       # Kafka produce/consume, offset 재개 확인
+│   └── send-test-webhook.sh      # GitHub 형식으로 서명한 webhook 전송
 ├── Dockerfile
 ├── compose.yaml                  # Kafka(KRaft) + topic 생성 + receiver
 └── .env.example
@@ -35,8 +36,10 @@ GitHub PR Webhook을 수신해 Kafka(`github.pr.events`)에 저장하는 Spring 
 ## 로컬 실행
 
 ```bash
+cp .env.example .env                # GITHUB_WEBHOOK_SECRET 채우기 (openssl rand -hex 32)
 docker compose up -d --build        # kafka → kafka-init(topic 생성) → app 순서로 기동
 bash scripts/kafka-smoke-test.sh    # Kafka 동작 확인 (PASS 출력)
+bash scripts/send-test-webhook.sh opened   # HTTP 202
 curl localhost:8080/actuator/health
 docker compose down                 # 종료 (데이터 유지). 데이터까지 지우려면 -v
 ```
@@ -58,6 +61,18 @@ Kafka listener:
 
 topic 자동 생성은 꺼져 있다. 오타난 topic 이름으로 접근하면 에러가 난다.
 
+## Webhook
+
+`POST /webhooks/github`. GitHub webhook 설정에서 Content type은 `application/json`, Secret은 `GITHUB_WEBHOOK_SECRET`과 같은 값으로 한다.
+
+| 응답 | 조건 |
+|---|---|
+| 202 | `pull_request`의 `opened` / `synchronize` / `reopened` |
+| 200 | `ping` |
+| 204 | 그 외 event/action (무시) |
+| 401 | `X-Hub-Signature-256` 누락/불일치 |
+| 400 | 서명은 유효하지만 JSON이 깨졌거나 계약 필드를 얻을 수 없음 |
+
 ## 환경변수
 
 앱:
@@ -65,6 +80,7 @@ topic 자동 생성은 꺼져 있다. 오타난 topic 이름으로 접근하면 
 | 이름 | 기본값 | 설명 |
 |---|---|---|
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker 주소 (compose에서는 `kafka:19092`) |
+| `GITHUB_WEBHOOK_SECRET` | (필수) | GitHub webhook Secret. 비어 있으면 기동 실패 |
 
 Compose (`.env.example` 참고):
 
