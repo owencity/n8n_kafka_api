@@ -1,0 +1,8 @@
+{
+  "deliveryId": "72d3162e-cc78-11e3-81ab-4c9367dc0958",
+  "event": "pull_request",
+  "action": "synchronize",
+  "repo": "owencity/n8n_kafka",
+  "prNumber": 4,
+  "headSha": "6dcb09b5b57875f334f61aebed695e2e4193db5e"
+}
